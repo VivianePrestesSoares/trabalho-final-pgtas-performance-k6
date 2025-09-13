@@ -1,0 +1,23 @@
+{
+  "name": "trabalho-final-api",
+  "version": "1.0.0",
+  "description": "Esta é uma API REST para gerenciamento de usuários e contatos, desenvolvida em Node.js com Express. Os dados são armazenados em memória (variáveis), ideal para estudos de testes e automação de APIs.",
+  "main": "app.js",
+  "scripts": {
+    "test": "mocha test/**/*.test.js --timeout10000",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "chai": "^4.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mocha": "^11.7.1",
+    "sinon": "^21.0.0",
+    "supertest": "^7.1.4",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
