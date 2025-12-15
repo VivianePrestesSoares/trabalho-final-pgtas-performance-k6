@@ -5,7 +5,10 @@
   "main": "app.js",
   "scripts": {
     "test": "mocha test/**/*.test.js --timeout10000",
-    "start": "node server.js"
+    "start": "node server.js",
+    "k6:run": "k6 run --out json=test/k6/results.json --out csv=test/k6/results.csv test/k6/performance.js",
+    "k6:report": "node test/k6/generateReport.js",
+    "k6:test": "npm run k6:run && npm run k6:report"
   },
   "keywords": [],
   "author": "",
