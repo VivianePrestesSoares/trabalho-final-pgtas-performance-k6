@@ -1,15 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-/**
- * Gera um relatório HTML a partir dos dados JSON do K6
- * Este script transforma os dados coletados pelo k6 em um arquivo HTML visual
- * facilitando a análise de métricas de desempenho, latência e sucesso das requisições.
- */
-
 function generateHTMLReport() {
   const resultsPath = path.join(__dirname, '../k6/results.json');
-  
+
   if (!fs.existsSync(resultsPath)) {
     console.log('⚠️  Arquivo de resultados não encontrado. Execute o teste K6 primeiro:');
     console.log('   k6 run --out json=test/k6/results.json test/k6/performance.js');
@@ -18,8 +12,7 @@ function generateHTMLReport() {
 
   const data = fs.readFileSync(resultsPath, 'utf8');
   const lines = data.split('\n').filter(line => line.trim());
-  
-  // Análise dos dados JSON
+
   let metrics = {
     totalRequests: 0,
     failedRequests: 0,
@@ -36,7 +29,7 @@ function generateHTMLReport() {
   lines.forEach(line => {
     try {
       const obj = JSON.parse(line);
-      
+
       if (obj.type === 'Point' && obj.metric === 'http_req_duration') {
         metrics.totalRequests++;
         metrics.durations.push(obj.data.value);
@@ -44,14 +37,14 @@ function generateHTMLReport() {
         metrics.minDuration = Math.min(metrics.minDuration, obj.data.value);
         metrics.maxDuration = Math.max(metrics.maxDuration, obj.data.value);
       }
-      
+
       if (obj.type === 'Point' && obj.metric === 'checks') {
         const checkName = obj.data.tags.check;
         metrics.checks[checkName] = metrics.checks[checkName] || { passed: 0, failed: 0 };
         obj.data.value === 1 ? metrics.checks[checkName].passed++ : metrics.checks[checkName].failed++;
       }
     } catch (e) {
-      // Ignorar linhas que não são JSON válido
+      // Skip invalid JSON lines
     }
   });
 
