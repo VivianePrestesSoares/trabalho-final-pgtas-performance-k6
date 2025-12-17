@@ -1,1 +1,4 @@
 node_modules
+test/k6/results.json
+test/k6/results.csv
+test/k6/report.html
