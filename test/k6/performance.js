@@ -5,7 +5,6 @@ import exec from 'k6/execution';
 import { generateRandomEmail } from './helpers/emailGenerator.js';
 import { getBaseUrl } from './helpers/baseUrl.js';
 
-// Variável de Ambiente: BASE_URL
 const baseUrl = getBaseUrl();
 const requestDuration = new Trend('request_duration_ms', true);
 
@@ -22,13 +21,9 @@ export const options = {
 };
 
 export default function () {
-  // 1. Usamos seu helper para o email
+
   const email = generateRandomEmail();
-
-  // 2. Para o loginUser, adicionamos o ID da VU para garantir que NUNCA duplique
-  // mesmo que o timestamp do seu helper coincida.
   const loginUser = `user_${exec.vu.idInTest}_${exec.scenario.iterationInTest}_${Date.now()}`;
-
   let token = null;
 
   group('Fluxo de Registro', () => {
@@ -47,7 +42,6 @@ export default function () {
     const response = http.post(`${baseUrl}/usuarios/registro`, payload, params);
     requestDuration.add(response.timings.duration);
 
-    // Se der erro (os 3% que você viu), isso vai te dizer o porquê no terminal
     if (response.status !== 201) {
       console.warn(`Erro no Registro [Status ${response.status}]: ${response.body}`);
     }
@@ -83,7 +77,6 @@ export default function () {
     }
   });
 
-  // Só tenta acessar contatos se o login funcionou e temos o token
   if (token) {
     group('Fluxo de Atividade Autenticada', () => {
       const authParams = {
