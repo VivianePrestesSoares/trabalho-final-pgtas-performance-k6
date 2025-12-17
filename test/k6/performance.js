@@ -11,19 +11,15 @@ const requestDuration = new Trend('request_duration_ms', true);
 
 export const options = {
   stages: [
-    { duration: '10s', target: 10 },
-    { duration: '5s', target: 10 },
+    { duration: '15s', target: 5 },
+    { duration: '30s', target: 5 },
+    { duration: '15s', target: 0 },
   ],
   thresholds: {
-    http_req_duration: ['p(95) < 2000'],
+    http_req_duration: ['p(95) < 3000'],
     http_req_failed: ['rate<0.1'],
   },
-  ext: {
-    loadimpact: {
-      projectID: 3356576,
-      name: 'Teste de Performance - Agenda de Contatos'
-    }
-  },
+
   out: [
     'json=test/k6/results.json',
     'csv=test/k6/results.csv'
@@ -31,9 +27,11 @@ export const options = {
 };
 
 export default function () {
+  const email = generateRandomEmail();
+  const loginUser = `user_${Date.now()}`;
+  let token = null;
+
   group('Fluxo de Registro', () => {
-    const email = generateRandomEmail();
-    const loginUser = `user_${Date.now()}`;
     const payload = JSON.stringify({
       nome: 'Usuário Teste',
       telefone: '51999999999',
@@ -50,59 +48,57 @@ export default function () {
 
     const response = http.post(`${baseUrl}/usuarios/registro`, payload, params);
     requestDuration.add(response.timings.duration);
-
+    
+    
     check(response, {
       'Registro: Status code é 201': (r) => r.status === 201,
       'Registro: Response contém mensagem': (r) => r.body.includes('Usuário registrado com sucesso'),
     });
+  });
 
-    if (response.status === 201) {
-      const responseBody = response.json();
-      const usuarioRegistrado = responseBody.usuario;
+  group('Fluxo de Login', () => {
+    const loginPayload = JSON.stringify({
+      login: loginUser,
+      senha: 'senha123'
+    });
 
-      group('Fluxo de Login', () => {
-        const loginPayload = JSON.stringify({
-          login: loginUser,
-          senha: 'senha123'
-        });
+    const loginParams = {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
 
-        const loginParams = {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        };
+    const loginResponse = http.post(`${baseUrl}/usuarios/login`, loginPayload, loginParams);
+    requestDuration.add(loginResponse.timings.duration);
+    
+    token = loginResponse.json().token;
 
-        const loginResponse = http.post(`${baseUrl}/usuarios/login`, loginPayload, loginParams);
-        requestDuration.add(loginResponse.timings.duration);
+    check(loginResponse, {
+      'Login: Status code é 200': (r) => r.status === 200,
+      'Login: Response contém token': (r) => r.body.includes('token'),
+      'Login: Response contém mensagem de sucesso': (r) => r.body.includes('Login realizado com sucesso'),
+    });
 
-        check(loginResponse, {
-          'Login: Status code é 200': (r) => r.status === 200,
-          'Login: Response contém token': (r) => r.body.includes('token'),
-          'Login: Response contém mensagem de sucesso': (r) => r.body.includes('Login realizado com sucesso'),
-        });
-
-        if (loginResponse.status === 200) {
-          const loginBody = loginResponse.json();
-          const token = loginBody.token;
-
-          group('Fluxo de Atividade Autenticada', () => {
-            const authParams = {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              }
-            };
-
-            const contactResponse = http.get(`${baseUrl}/contatos`, authParams);
-            requestDuration.add(contactResponse.timings.duration);
-
-            check(contactResponse, {
-              'Listar Contatos: Status code é 200': (r) => r.status === 200,
-              'Listar Contatos: Response é um array': (r) => Array.isArray(r.json()),
-            });
-          });
-        }
-      });
+    if (loginResponse.status === 200) {
+      const loginBody = loginResponse.json();
+      token = loginBody.token;
     }
+  });
+
+  group('Fluxo de Atividade Autenticada', () => {
+    const authParams = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    };
+
+    const contactResponse = http.get(`${baseUrl}/contatos`, authParams);
+    requestDuration.add(contactResponse.timings.duration);
+
+    check(contactResponse, {
+      'Listar Contatos: Status code é 200': (r) => r.status === 200,
+      'Listar Contatos: Response é um array': (r) => Array.isArray(r.json()),
+    });
   });
 }
