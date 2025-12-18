@@ -2,7 +2,7 @@
 
 Este diretório contém testes de performance desenvolvidos com **K6**, uma ferramenta moderna para teste de carga e performance de APIs.
 
-## 📋 Visão Geral
+##  Visão Geral
 
 Os testes de performance validam o comportamento da API sob diferentes cenários de carga, analisando:
 - Tempo de resposta (média, mínimo, máximo, percentil 95)
@@ -10,7 +10,7 @@ Os testes de performance validam o comportamento da API sob diferentes cenários
 - Conformidade com limites de desempenho (thresholds)
 - Validação de comportamento através de checks
 
-## 🚀 Como Executar
+##  Como Executar
 
 ### Pré-requisitos
 - K6 instalado na máquina ([Instalação](https://k6.io/docs/getting-started/installation/))
@@ -32,7 +32,7 @@ npm run k6:run
 npm run k6:test
 ```
 
-## 📊 Relatório de Teste (HTML)
+##  Relatório de Teste (HTML)
 
 ### Geração Automática
 ```bash
@@ -59,8 +59,8 @@ Este comando executa o teste e gera automaticamente um relatório HTML visual.
 
 ### Visualização do Relatório
 Abra o arquivo `test/k6/report.html` em um navegador para visualizar:
-- ✅ Métricas de desempenho (tempo médio, mínimo, máximo, p95)
-- ✅ Status do threshold (se atendeu o requisito p95 < 2 segundos)
+- ✅ Métricas de desempenho (tempo médio, mínimo, máximo, p90)
+- ✅ Status do threshold (se atendeu o requisito p90 < 3 segundos)
 - ✅ Total de requisições e taxa de sucesso
 - ✅ Resultados detalhados de cada check realizado
 - ✅ Visualização clara e responsiva
@@ -75,7 +75,7 @@ O script `test/k6/generateReport.js` realiza:
 3. Geração de HTML responsivo com design moderno
 4. Validação de thresholds e exibição clara do status
 
-## 📁 Estrutura de Arquivos
+##  Estrutura de Arquivos
 
 ```
 test/k6/
@@ -90,29 +90,30 @@ test/k6/
 └── report.html            # Relatório visual (gerado após execução)
 ```
 
-## 🎯 Conceitos K6 Implementados
+##  Conceitos K6 Implementados
 
 ### 1. **Stages** (Estágios de Carga)
 
 **Stages** (estágios) definem como a carga aumenta ao longo do tempo. Você especifica durações e quantidades de usuários virtuais para diferentes fases do teste, simulando um aumento gradual de carga.
 
-**Arquivo**: `performance.js` (linhas 15-20)
+**Arquivo**: `performance.js` (linhas 13-20)
 
 **Código implementado**:
 ```javascript
 export const options = {
   stages: [
-    { duration: '10s', target: 10 },  // Ramp-up: sobe até 10 usuários em 10 segundos
-    { duration: '5s', target: 10 },   // Stay: mantém 10 usuários por 5 segundos
+    { duration: '15s', target: 5 },    // Ramp-up: sobe até 5 usuários em 15 segundos
+    { duration: '30s', target: 5 },    // Stay: mantém 5 usuários por 30 segundos
+    { duration: '15s', target: 0 },    // Ramp-down: reduz para 0 usuários em 15 segundos
   ],
-  // ... resto da configuração
 };
 ```
 
 **Explicação**: 
-- Primeiro stage: aumenta gradualmente de 0 até 10 usuários virtuais em 10 segundos
-- Segundo stage: mantém 10 usuários constantes por 5 segundos
-- Simula um padrão real de aumento de tráfego
+- Primeiro stage: aumenta gradualmente de 0 até 5 usuários virtuais em 15 segundos
+- Segundo stage: mantém 5 usuários constantes por 30 segundos (fase principal de teste)
+- Terceiro stage: reduz gradualmente para 0 usuários em 15 segundos (encerramento)
+- Simula um padrão real de aumento e redução de tráfego
 
 ---
 
@@ -120,18 +121,18 @@ export const options = {
 
 **Thresholds** definem critérios de sucesso/falha para o teste. Se as métricas não atenderem aos thresholds, o teste é considerado falho. Útil para CI/CD.
 
-**Arquivo**: `performance.js` (linhas 21-24)
+**Arquivo**: `performance.js` (linhas 18-20)
 
 **Código implementado**:
 ```javascript
 thresholds: {
-  http_req_duration: ['p(95) < 2000'], // 95º percentil deve ser menor que 2000ms
-  http_req_failed: ['rate<0.1'],        // Taxa de falha deve ser menor que 10%
+  http_req_duration: ['p(90) < 3000'],  // 90º percentil deve ser menor que 3000ms
+  http_req_failed: ['rate<0.1'],         // Taxa de falha deve ser menor que 10%
 },
 ```
 
 **Explicação**: 
-- `p(95) < 2000`: O percentil 95 do tempo de resposta (95% das requisições) deve ser menor que 2 segundos
+- `p(90) < 3000`: O percentil 90 do tempo de resposta (90% das requisições) deve ser menor que 3 segundos
 - `rate<0.1`: A taxa de falha de requisições deve ser menor que 10%
 - Se esses critérios não forem atendidos, o teste falha automaticamente
 
@@ -234,7 +235,7 @@ export function getBaseUrl() {
 }
 
 // Uso no teste:
-const baseUrl = getBaseUrl(); // Obtém URL da variável de ambiente ou valor padrão
+const baseUrl = getBaseUrl(); 
 ```
 
 **Helper 3 - Login com Token**:
@@ -318,33 +319,29 @@ k6 run --env BASE_URL=https://api.producao.com test/k6/performance.js
 
 **Data-Driven Testing** utiliza dados diferentes para cada iteração/VU, simulando cenários variados e evitando que todos os usuários façam exatamente o mesmo.
 
-**Arquivo**: `performance.js` (dentro do grupo de Registro)
+**Arquivo**: `performance.js` (linhas 26-28)
 
 **Código implementado - Geração de Dados Dinâmicos**:
 ```javascript
-group('Fluxo de Registro', () => {
-  // Gera email único a cada iteração
-  const email = generateRandomEmail();
-  
-  // Gera login único baseado em timestamp
-  const loginUser = `user_${Date.now()}`;
-  
-  // Cada VU usa dados diferentes
-  const payload = JSON.stringify({
-    nome: 'Usuário Teste',
-    telefone: '51999999999',
-    email: email,           // Email diferente a cada iteração
-    login: loginUser,       // Login diferente a cada iteração
-    senha: 'senha123'
-  });
+const email = generateRandomEmail();
+// Geração de login único com VU ID, número de iteração e timestamp
+const loginUser = `user_${exec.vu.idInTest}_${exec.scenario.iterationInTest}_${Date.now()}`;
 
-  // ... resto do código
+// Cada VU usa dados diferentes
+const payload = JSON.stringify({
+  nome: 'Usuário Teste',
+  telefone: '51999999999',
+  email: email,           // Email diferente a cada iteração
+  login: loginUser,       // Login diferente a cada iteração/VU
+  senha: 'senha123'
 });
 ```
 
 **Explicação**: 
 - Cada iteração do teste usa email e login diferentes
-- Com 10 VUs rodando por 15 segundos, gera-se múltiplos conjuntos de dados
+- `exec.vu.idInTest`: ID único do usuário virtual
+- `exec.scenario.iterationInTest`: Número da iteração do cenário
+- Com 5 VUs rodando por 30 segundos, gera-se múltiplos conjuntos de dados únicos
 - Simula melhor um cenário real onde diferentes usuários se registram
 
 ---
@@ -353,55 +350,38 @@ group('Fluxo de Registro', () => {
 
 **Reaproveitamento de Resposta** extrai dados de uma resposta para usar em requisições posteriores, simulando fluxos reais onde uma ação depende do resultado anterior.
 
-**Arquivo**: `performance.js` (linhas 56-64, 90-96)
+**Arquivo**: `performance.js` (linhas 77-79)
 
-**Código implementado - Fluxo de Registro**:
+**Código implementado - Fluxo de Login com Extração de Token**:
 ```javascript
-const response = http.post(`${baseUrl}/usuarios/registro`, payload, params);
-
-// Reaproveitamento: Extrai dados da resposta anterior
-if (response.status === 201) {
-  const responseBody = response.json();
-  const usuarioRegistrado = responseBody.usuario; // Extrai o usuário registrado
-  
-  // Usa os dados do usuário para o próximo passo (login)
-  group('Fluxo de Login', () => {
-    const loginPayload = JSON.stringify({
-      login: loginUser,
-      senha: 'senha123'
-    });
-    // ... continua com login do usuário registrado
-  });
+if (loginResponse.status === 200) {
+  const loginBody = loginResponse.json();
+  token = loginBody.token;  // Extrai o token JWT da resposta de login
 }
 ```
 
-**Código implementado - Fluxo de Login**:
+**Código implementado - Uso do Token em Requisição Autenticada**:
 ```javascript
-const loginResponse = http.post(`${baseUrl}/usuarios/login`, loginPayload, loginParams);
-
-// Reaproveitamento: Extrai token da resposta de login
-if (loginResponse.status === 200) {
-  const loginBody = loginResponse.json();
-  const token = loginBody.token; // Extrai o token JWT
-  
-  // Usa o token em requisição autenticada
+if (token) {
   group('Fluxo de Atividade Autenticada', () => {
     const authParams = {
       headers: {
-        'Authorization': `Bearer ${token}` // Usa token extraído
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`  // Usa token extraído
       }
     };
     
     const contactResponse = http.get(`${baseUrl}/contatos`, authParams);
-    // ... usa o token para acessar recurso protegido
+    // Acessa recurso protegido usando o token
   });
 }
 ```
 
 **Explicação**: 
-- Simula fluxo real: registrar → logar → usar token para acessar dados
+- Simula fluxo real: registrar → logar → extrair token → usar token para acessar dados
 - Extrai dados da resposta anterior (token JWT)
 - Valida que a API retorna dados no formato esperado
+- Token é reutilizado em requisições subsequentes
 
 ---
 
@@ -449,15 +429,17 @@ group('Fluxo de Atividade Autenticada', () => {
 
 **Groups** organizam ações logicamente e geram métricas separadas para cada grupo, facilitando identificar qual parte do teste está lenta.
 
-**Arquivo**: `performance.js` (múltiplas ocorrências)
+**Arquivo**: `performance.js` (linhas 32, 57, 84)
 
-**Código implementado - Estrutura de Groups**:
+**Código implementado - Estrutura de Groups Independentes**:
 ```javascript
 export default function () {
-  // Group 1: Fluxo de Registro
+  const email = generateRandomEmail();
+  const loginUser = `user_${exec.vu.idInTest}_${exec.scenario.iterationInTest}_${Date.now()}`;
+  let token = null;
+
+  // Group 1: Fluxo de Registro (independente)
   group('Fluxo de Registro', () => {
-    const email = generateRandomEmail();
-    const loginUser = `user_${Date.now()}`;
     const payload = JSON.stringify({
       nome: 'Usuário Teste',
       telefone: '51999999999',
@@ -467,89 +449,83 @@ export default function () {
     });
 
     const params = {
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: { 'Content-Type': 'application/json' }
     };
 
     const response = http.post(`${baseUrl}/usuarios/registro`, payload, params);
-    
     requestDuration.add(response.timings.duration);
 
     check(response, {
       'Registro: Status code é 201': (r) => r.status === 201,
       'Registro: Response contém mensagem': (r) => r.body.includes('Usuário registrado com sucesso'),
     });
+  });
 
-    if (response.status === 201) {
-      const responseBody = response.json();
+  // Group 2: Fluxo de Login (independente)
+  group('Fluxo de Login', () => {
+    const loginPayload = JSON.stringify({
+      login: loginUser,
+      senha: 'senha123'
+    });
 
-      // Group 2: Fluxo de Login (aninhado)
-      group('Fluxo de Login', () => {
-        const loginPayload = JSON.stringify({
-          login: loginUser,
-          senha: 'senha123'
-        });
+    const loginParams = {
+      headers: { 'Content-Type': 'application/json' }
+    };
 
-        const loginParams = {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        };
+    const loginResponse = http.post(`${baseUrl}/usuarios/login`, loginPayload, loginParams);
+    requestDuration.add(loginResponse.timings.duration);
 
-        const loginResponse = http.post(`${baseUrl}/usuarios/login`, loginPayload, loginParams);
+    check(loginResponse, {
+      'Login: Status code é 200': (r) => r.status === 200,
+      'Login: Response contém token': (r) => r.body.includes('token'),
+      'Login: Response contém mensagem de sucesso': (r) => r.body.includes('Login realizado com sucesso'),
+    });
 
-        requestDuration.add(loginResponse.timings.duration);
-
-        check(loginResponse, {
-          'Login: Status code é 200': (r) => r.status === 200,
-          'Login: Response contém token': (r) => r.body.includes('token'),
-          'Login: Response contém mensagem de sucesso': (r) => r.body.includes('Login realizado com sucesso'),
-        });
-
-        if (loginResponse.status === 200) {
-          const loginBody = loginResponse.json();
-          const token = loginBody.token;
-
-          // Group 3: Fluxo de Atividade Autenticada (aninhado)
-          group('Fluxo de Atividade Autenticada', () => {
-            const authParams = {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              }
-            };
-
-            const contactResponse = http.get(`${baseUrl}/contatos`, authParams);
-
-            requestDuration.add(contactResponse.timings.duration);
-
-            check(contactResponse, {
-              'Listar Contatos: Status code é 200': (r) => r.status === 200,
-              'Listar Contatos: Response é um array': (r) => Array.isArray(r.json()),
-            });
-          });
-        }
-      });
+    if (loginResponse.status === 200) {
+      const loginBody = loginResponse.json();
+      token = loginBody.token;
     }
   });
+
+  // Group 3: Fluxo de Atividade Autenticada (independente)
+  if (token) {
+    group('Fluxo de Atividade Autenticada', () => {
+      const authParams = {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      };
+
+      const contactResponse = http.get(`${baseUrl}/contatos`, authParams);
+      requestDuration.add(contactResponse.timings.duration);
+
+      check(contactResponse, {
+        'Listar Contatos: Status code é 200': (r) => r.status === 200,
+        'Listar Contatos: Response é um array': (r) => Array.isArray(r.json()),
+      });
+    });
+  }
+
+  sleep(1);  // Pausa entre iterações
 }
 ```
 
 **Resultado esperado nos logs**:
 ```
-group_duration{group:::Fluxo de Registro}....: avg=250ms min=150ms med=230ms max=500ms p(95)=450ms
-group_duration{group:::Fluxo de Login}........: avg=120ms min=80ms  med=110ms max=300ms p(95)=200ms
-group_duration{group:::Fluxo de Atividade...}: avg=100ms min=50ms  med=95ms  max=250ms p(95)=180ms
+group_duration{group:::Fluxo de Registro}............: avg=250ms min=150ms med=230ms max=500ms p(95)=450ms
+group_duration{group:::Fluxo de Login}...............: avg=120ms min=80ms  med=110ms max=300ms p(95)=200ms
+group_duration{group:::Fluxo de Atividade...}.......: avg=100ms min=50ms  med=95ms  max=250ms p(95)=180ms
 ```
 
 **Explicação**: 
-- **Fluxo de Registro**: Agrupa todas as ações de registro
-- **Fluxo de Login**: Agrupa todas as ações de autenticação
-- **Fluxo de Atividade Autenticada**: Agrupa ações que requerem token
+- **Fluxo de Registro**: Agrupa ações de registro de novo usuário
+- **Fluxo de Login**: Agrupa ações de autenticação e extração de token
+- **Fluxo de Atividade Autenticada**: Agrupa ações que requerem token JWT
+- Groups são **independentes** (não aninhados), executando sequencialmente
 - Cada group gera métricas separadas, facilitando identificação de gargalos
-- Groups podem ser aninhados (um dentro do outro)
 - Ajuda na compreensão e análise de qual parte do teste está lenta
+- `sleep(1)`: Pausa de 1 segundo entre iterações para simular comportamento real
 
 ## 📈 Fluxo de Teste
 
@@ -584,7 +560,7 @@ O teste segue um fluxo principal que simula um cenário de uso real:
 
 O teste é considerado bem-sucedido quando:
 
-1. **Threshold Atendido**: Percentil 95 do tempo de resposta < 2000ms
+1. **Threshold Atendido**: Percentil 90 do tempo de resposta < 3000ms
 2. **Taxa de Falha Aceitável**: Menos de 10% de requisições falhadas
 3. **Todos os Checks Passam**: Validações de status code e conteúdo de resposta
 
@@ -620,8 +596,11 @@ k6 run --env BASE_URL=http://localhost:3000 test/k6/performance.js
 npm start  # Em outro terminal
 ```
 
+### Erro: "Token is null"
+**Solução**: Verifique se o login foi bem-sucedido. O teste continua mesmo com falhas parciais.
+
 ### Threshold Failed
-**Significado**: O percentil 95 do tempo de resposta está acima de 2 segundos
+**Significado**: O percentil 90 do tempo de resposta está acima de 3 segundos
 **Ação**: Analise o `report.html` para identificar gargalos
 
 ## 📚 Recursos Adicionais
